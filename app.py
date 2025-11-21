@@ -192,14 +192,17 @@ def get_new_results(query, limit=100, fetch_all=False):
 
         # Paginate if fetch_all is enabled
         if fetch_all:
-            page_token = result.get("links", {}).get("next")
-            while page_token:
+            # The New API returns a cursor token, not a URL
+            cursor = result.get("links", {}).get("next")
+            while cursor:
                 try:
-                    payload["cursor"] = page_token
+                    # Use the cursor token in the payload
+                    next_payload = payload.copy()
+                    next_payload["cursor"] = cursor
                     response = requests.post(
                         NEW_URL,
                         headers=headers,
-                        json=payload,
+                        json=next_payload,
                         timeout=30
                     )
                     response.raise_for_status()
@@ -209,7 +212,8 @@ def get_new_results(query, limit=100, fetch_all=False):
 
                     ips.update(extract_ips_from_hits(hits))
 
-                    page_token = result.get("links", {}).get("next")
+                    # Get next cursor for next iteration
+                    cursor = result.get("links", {}).get("next")
                 except Exception as e:
                     error = f"Pagination error: {str(e)}"
                     break

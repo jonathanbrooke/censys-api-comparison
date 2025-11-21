@@ -54,16 +54,6 @@ def init_db():
 init_db()
 
 
-def strip_quotes(text):
-    """
-    Remove surrounding double quotes from a string if present.
-    """
-    text = text.strip()
-    if text.startswith('"') and text.endswith('"') and len(text) >= 2:
-        return text[1:-1]
-    return text
-
-
 def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE"):
     """Fetch results from Legacy Censys API."""
     ips = set()
@@ -174,8 +164,8 @@ def index():
 def compare():
     """Compare queries between Legacy and New APIs."""
     data = request.get_json()
-    legacy_query = strip_quotes(data.get('legacy_query', ''))
-    new_query = strip_quotes(data.get('new_query', ''))
+    legacy_query = data.get('legacy_query', '').strip()
+    new_query = data.get('new_query', '').strip()
     virtual_hosts = data.get('virtual_hosts', 'EXCLUDE')
 
     if not legacy_query or not new_query:

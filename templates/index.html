@@ -433,6 +433,101 @@
             outline: none;
             border-color: #667eea;
         }
+
+        .options-section {
+            margin-top: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .options-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-group label {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .option-group select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .option-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .tooltip {
+            position: relative;
+            cursor: help;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #555;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 13px;
+            line-height: 1.4;
+            font-weight: normal;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -467,6 +562,23 @@
                     <div class="query-box">
                         <label for="new-query">New API Query (v3)</label>
                         <textarea id="new-query" placeholder='services.port: 80 AND location.country: "US"'></textarea>
+                    </div>
+                </div>
+
+                <div class="options-section">
+                    <h3>⚙️ Legacy API Options</h3>
+                    <div class="option-group">
+                        <label for="virtual-hosts">
+                            Virtual Hosts
+                            <span class="tooltip">?
+                                <span class="tooltiptext">Determine how to query Virtual Hosts. The default is EXCLUDE which will ignore any virtual hosts entries. When set to INCLUDE or ONLY virtual hosts will be present in the returned list of hits, with the latter returning only virtual hosts.</span>
+                            </span>
+                        </label>
+                        <select id="virtual-hosts">
+                            <option value="EXCLUDE">EXCLUDE (Default)</option>
+                            <option value="INCLUDE">INCLUDE</option>
+                            <option value="ONLY">ONLY</option>
+                        </select>
                     </div>
                 </div>
 
@@ -708,6 +820,7 @@
         async function compareQueries() {
             const legacyQuery = document.getElementById('legacy-query').value.trim();
             const newQuery = document.getElementById('new-query').value.trim();
+            const virtualHosts = document.getElementById('virtual-hosts').value;
 
             if (!legacyQuery || !newQuery) {
                 alert('Please enter both queries');
@@ -727,7 +840,8 @@
                     },
                     body: JSON.stringify({
                         legacy_query: legacyQuery,
-                        new_query: newQuery
+                        new_query: newQuery,
+                        virtual_hosts: virtualHosts
                     })
                 });
 

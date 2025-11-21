@@ -2,6 +2,20 @@
 
 A web-based tool to compare search results between Censys Legacy API (v2) and New Platform API (v3).
 
+## API Endpoints
+
+This tool queries the following Censys API endpoints:
+
+- **Legacy API (v2)**: `GET https://search.censys.io/api/v2/hosts/search`
+  - Authentication: HTTP Basic Auth (API ID + Secret)
+  - Returns host search results with IP addresses
+  - Supports virtual hosts filtering
+
+- **New Platform API (v3)**: `POST https://api.platform.censys.io/v3/global/search/query`
+  - Authentication: Bearer token + `X-Organization-ID` header
+  - Returns unified search results across multiple resource types
+  - Includes web properties and host data
+
 ## Setup
 
 1. **Install dependencies:**

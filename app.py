@@ -55,7 +55,7 @@ def strip_quotes(text):
     return text
 
 
-def get_legacy_results(query, limit=100):
+def get_legacy_results(query, limit=100, virtual_hosts="EXCLUDE"):
     """Fetch results from Legacy Censys API."""
     ips = set()
     total_hits = 0
@@ -65,7 +65,7 @@ def get_legacy_results(query, limit=100):
     params = {
         "q": query,
         "per_page": limit,
-        "virtual_hosts": "EXCLUDE",
+        "virtual_hosts": virtual_hosts,
         "fields": ["ip"]
     }
 
@@ -167,6 +167,7 @@ def compare():
     data = request.get_json()
     legacy_query = strip_quotes(data.get('legacy_query', ''))
     new_query = strip_quotes(data.get('new_query', ''))
+    virtual_hosts = data.get('virtual_hosts', 'EXCLUDE')
 
     if not legacy_query or not new_query:
         return jsonify({
@@ -174,7 +175,9 @@ def compare():
         }), 400
 
     # Fetch results from both APIs
-    legacy_ips, legacy_total, legacy_error = get_legacy_results(legacy_query)
+    legacy_ips, legacy_total, legacy_error = get_legacy_results(
+        legacy_query, virtual_hosts=virtual_hosts
+    )
     new_ips, new_total, new_error = get_new_results(new_query)
 
     # Calculate differences

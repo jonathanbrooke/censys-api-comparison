@@ -18,12 +18,18 @@ This tool queries the following Censys API endpoints:
 
 ## Setup
 
-1. **Install dependencies:**
+1. **Create a virtual environment (recommended):**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Configure environment variables:**
+3. **Configure environment variables:**
    - Copy `example.env` to `.env`
    - Fill in your Censys API credentials:
      ```
@@ -33,12 +39,12 @@ This tool queries the following Censys API endpoints:
      CENSYS_ORG_ID=your_org_id
      ```
 
-3. **Start the application:**
+4. **Start the application:**
    ```bash
    python app.py
    ```
 
-4. **Open in browser:**
+5. **Open in browser:**
    - Navigate to `http://localhost:5000`
 
 ## Features

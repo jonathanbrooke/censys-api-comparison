@@ -401,7 +401,7 @@ if __name__ == '__main__':
     if not all([LEGACY_API_ID, LEGACY_API_SECRET, NEW_API_KEY]):
         print("Error: Missing API credentials in .env file.")
         exit(1)
-    
+
     print("Starting Censys API Comparison Web App...")
     print("Open http://localhost:5000 in your browser")
     app.run(debug=True, port=5000)

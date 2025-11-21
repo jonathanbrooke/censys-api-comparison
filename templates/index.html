@@ -678,6 +678,7 @@
         let currentResults = null;
         let allSearches = [];
         let currentSort = 'date-desc';
+        let currentSearchName = null;
 
         // Load saved searches on page load
         window.onload = function() {
@@ -823,6 +824,9 @@
             
             if (!search) return;
 
+            // Store the current search name
+            currentSearchName = search.name;
+
             // Load queries
             document.getElementById('legacy-query').value = search.legacy_query;
             document.getElementById('new-query').value = search.new_query;
@@ -834,6 +838,9 @@
             // Display saved results
             currentResults = search.results;
             displayResults(search.results);
+
+            // Prefill the search name in the save input
+            document.getElementById('search-name').value = search.name;
         }
 
         async function deleteSearch(searchId) {
@@ -892,6 +899,10 @@
 
                 currentResults = data;
                 displayResults(data);
+                
+                // Clear the search name for new comparisons
+                currentSearchName = null;
+                document.getElementById('search-name').value = '';
                 
                 // Show save panel after successful comparison
                 document.getElementById('save-panel').style.display = 'block';

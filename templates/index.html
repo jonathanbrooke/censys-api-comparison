@@ -755,6 +755,8 @@
                 return;
             }
 
+            const virtualHosts = document.getElementById('virtual-hosts').value;
+
             try {
                 const response = await fetch('/save-search', {
                     method: 'POST',
@@ -765,11 +767,44 @@
                         name: name,
                         legacy_query: document.getElementById('legacy-query').value,
                         new_query: document.getElementById('new-query').value,
+                        virtual_hosts: virtualHosts,
                         results: currentResults
                     })
                 });
 
                 const data = await response.json();
+
+                // Handle duplicate name (409 Conflict)
+                if (response.status === 409) {
+                    if (confirm(`A search named "${name}" already exists. Do you want to overwrite it?`)) {
+                        // Retry with overwrite flag
+                        const retryResponse = await fetch('/save-search', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                name: name,
+                                legacy_query: document.getElementById('legacy-query').value,
+                                new_query: document.getElementById('new-query').value,
+                                virtual_hosts: virtualHosts,
+                                results: currentResults,
+                                overwrite: true
+                            })
+                        });
+
+                        const retryData = await retryResponse.json();
+
+                        if (!retryResponse.ok) {
+                            throw new Error(retryData.error || 'Failed to save search');
+                        }
+
+                        document.getElementById('search-name').value = '';
+                        await loadSavedSearches();
+                        alert('Search updated successfully!');
+                    }
+                    return;
+                }
 
                 if (!response.ok) {
                     throw new Error(data.error || 'Failed to save search');
@@ -791,6 +826,10 @@
             // Load queries
             document.getElementById('legacy-query').value = search.legacy_query;
             document.getElementById('new-query').value = search.new_query;
+
+            // Load virtual_hosts setting (default to EXCLUDE if not present)
+            const virtualHostsSelect = document.getElementById('virtual-hosts');
+            virtualHostsSelect.value = search.virtual_hosts || 'EXCLUDE';
 
             // Display saved results
             currentResults = search.results;

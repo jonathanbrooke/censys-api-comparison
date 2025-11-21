@@ -33,10 +33,19 @@ def init_db():
             name TEXT NOT NULL,
             legacy_query TEXT NOT NULL,
             new_query TEXT NOT NULL,
+            virtual_hosts TEXT DEFAULT 'EXCLUDE',
             results TEXT NOT NULL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # Add virtual_hosts column to existing tables if it doesn't exist
+    cursor.execute("PRAGMA table_info(saved_searches)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'virtual_hosts' not in columns:
+        cursor.execute(
+            'ALTER TABLE saved_searches ADD COLUMN '
+            'virtual_hosts TEXT DEFAULT "EXCLUDE"'
+        )
     conn.commit()
     conn.close()
 
@@ -222,18 +231,46 @@ def save_search():
     name = data.get('name', '').strip()
     legacy_query = data.get('legacy_query', '')
     new_query = data.get('new_query', '')
+    virtual_hosts = data.get('virtual_hosts', 'EXCLUDE')
     results = data.get('results', {})
+    overwrite = data.get('overwrite', False)
 
     if not name:
         return jsonify({'error': 'Name is required'}), 400
 
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute(
-        'INSERT INTO saved_searches (name, legacy_query, new_query, results) '
-        'VALUES (?, ?, ?, ?)',
-        (name, legacy_query, new_query, json.dumps(results))
-    )
+
+    # Check if name already exists
+    cursor.execute('SELECT id FROM saved_searches WHERE name = ?', (name,))
+    existing = cursor.fetchone()
+
+    if existing and not overwrite:
+        conn.close()
+        return jsonify({
+            'duplicate': True,
+            'message': 'A search with this name already exists'
+        }), 409
+
+    if existing and overwrite:
+        # Update existing entry
+        cursor.execute(
+            'UPDATE saved_searches SET legacy_query = ?, new_query = ?, '
+            'virtual_hosts = ?, results = ?, timestamp = CURRENT_TIMESTAMP '
+            'WHERE name = ?',
+            (legacy_query, new_query, virtual_hosts,
+             json.dumps(results), name)
+        )
+    else:
+        # Insert new entry
+        cursor.execute(
+            'INSERT INTO saved_searches '
+            '(name, legacy_query, new_query, virtual_hosts, results) '
+            'VALUES (?, ?, ?, ?, ?)',
+            (name, legacy_query, new_query, virtual_hosts,
+             json.dumps(results))
+        )
+
     conn.commit()
     conn.close()
 
@@ -246,8 +283,8 @@ def load_searches():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute(
-        'SELECT id, name, legacy_query, new_query, results, timestamp '
-        'FROM saved_searches ORDER BY timestamp DESC'
+        'SELECT id, name, legacy_query, new_query, virtual_hosts, '
+        'results, timestamp FROM saved_searches ORDER BY timestamp DESC'
     )
     rows = cursor.fetchall()
     conn.close()
@@ -259,8 +296,9 @@ def load_searches():
             'name': row[1],
             'legacy_query': row[2],
             'new_query': row[3],
-            'results': json.loads(row[4]),
-            'timestamp': row[5]
+            'virtual_hosts': row[4],
+            'results': json.loads(row[5]),
+            'timestamp': row[6]
         })
 
     return jsonify(searches)

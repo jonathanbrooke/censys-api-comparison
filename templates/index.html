@@ -839,8 +839,9 @@
             currentResults = search.results;
             displayResults(search.results);
 
-            // Prefill the search name in the save input
+            // Prefill the search name in the save input and show save panel
             document.getElementById('search-name').value = search.name;
+            document.getElementById('save-panel').style.display = 'block';
         }
 
         async function deleteSearch(searchId) {

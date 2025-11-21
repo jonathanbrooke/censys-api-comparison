@@ -118,6 +118,7 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
             flex: 1;
+            position: relative;
         }
 
         .header {
@@ -125,6 +126,7 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
@@ -139,6 +141,30 @@
 
         .content {
             padding: 30px;
+        }
+
+        .title-section {
+            margin-bottom: 25px;
+        }
+
+        .title-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: border-color 0.3s;
+        }
+
+        .title-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .title-input::placeholder {
+            font-weight: 400;
+            color: #999;
         }
 
         .query-section {
@@ -436,8 +462,8 @@
 
         .export-btn {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 30px;
+            right: 30px;
             background: #28a745;
             color: white;
             border: none;
@@ -466,6 +492,67 @@
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .new-search-btn {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 6px rgba(231, 76, 60, 0.3);
+        }
+
+        .new-search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(231, 76, 60, 0.4);
+            background: #c0392b;
+        }
+
+        .new-search-btn:active {
+            transform: translateY(0);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 16px;
+            margin-left: 8px;
+            cursor: help;
+        }
+
+        .status-success {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .status-error {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .status-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .status-unknown {
+            background-color: #95a5a6;
+            color: white;
         }
 
         .options-section {
@@ -582,14 +669,17 @@
 
     <div class="main-container">
         <div class="container">
-            <button id="export-btn" class="export-btn" onclick="exportResults()" disabled>📥 Export</button>
             <div class="header">
+                <button id="new-search-btn" class="new-search-btn" onclick="newSearch()">➕ New Search</button>
+                <button id="export-btn" class="export-btn" onclick="exportResults()" disabled>📥 Export</button>
                 <h1>🔍 Censys API Comparison Tool</h1>
                 <p>Compare query results between Legacy API (v2) and New Platform API (v3)</p>
             </div>
 
             <div class="content">
-                <h2 id="search-title" style="color: #667eea; margin-bottom: 20px; font-size: 24px;">New Search</h2>
+                <div class="title-section">
+                    <input type="text" id="search-title-input" class="title-input" placeholder="Enter a title to auto-save this search...">
+                </div>
                 <div class="query-section">
                     <div class="query-box">
                         <label for="legacy-query">Legacy API Query (v2)</label>
@@ -769,6 +859,29 @@
             URL.revokeObjectURL(url);
         }
 
+        function newSearch() {
+            // Clear all form fields
+            document.getElementById('legacy-query').value = '';
+            document.getElementById('new-query').value = '';
+            document.getElementById('search-name').value = '';
+            document.getElementById('search-title-input').value = '';
+            document.getElementById('virtual-hosts').value = 'INCLUDE';
+            document.getElementById('fetch-all').checked = false;
+            
+            // Clear current results
+            currentResults = null;
+            currentSearchName = null;
+            
+            // Update UI
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('save-panel').style.display = 'none';
+            document.getElementById('fetch-all-warning').style.display = 'none';
+            document.getElementById('export-btn').disabled = true;
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         function sortSearches(searches, sortType) {
             const sorted = [...searches];
             
@@ -806,9 +919,46 @@
                     <div class="saved-search-date">${new Date(search.timestamp).toLocaleString()}</div>
                     <div class="saved-search-actions">
                         <button onclick="event.stopPropagation(); deleteSearch(${search.id})">Delete</button>
+                        ${getStatusIndicator(search.results)}
                     </div>
                 </div>
             `).join('');
+        }
+
+        function getStatusIndicator(resultsData) {
+            if (!resultsData) {
+                return '<span class="status-indicator status-unknown" title="No results yet">?</span>';
+            }
+            
+            try {
+                // Handle both string and object formats
+                const results = typeof resultsData === 'string' ? JSON.parse(resultsData) : resultsData;
+                
+                // Check if we have the expected structure
+                if (!results.legacy || !results.new) {
+                    return '<span class="status-indicator status-unknown" title="Invalid results structure">?</span>';
+                }
+                
+                const legacyTotal = results.legacy.total || 0;
+                const newTotal = results.new.total || 0;
+                
+                // Orange warning if either API returned 0 results
+                if (legacyTotal === 0 || newTotal === 0) {
+                    return '<span class="status-indicator status-warning" title="No results from one or both APIs">⚠</span>';
+                }
+                
+                // Check the comparison results
+                const missingInNew = results.comparison?.missing_in_new || [];
+                
+                if (missingInNew.length === 0) {
+                    return '<span class="status-indicator status-success" title="All legacy IPs found in new API">✓</span>';
+                } else {
+                    return '<span class="status-indicator status-error" title="Some legacy IPs missing from new API">✗</span>';
+                }
+            } catch (e) {
+                console.error('Error parsing results:', e);
+                return '<span class="status-indicator status-unknown" title="Error parsing results">?</span>';
+            }
         }
 
         async function loadSavedSearches() {
@@ -826,6 +976,42 @@
             const searchTerm = document.getElementById('sidebar-search').value.toLowerCase();
             const filtered = allSearches.filter(s => s.name.toLowerCase().includes(searchTerm));
             displaySearchList(filtered);
+        }
+
+        async function autoSaveSearch(title) {
+            if (!currentResults) {
+                return;
+            }
+
+            const virtualHosts = document.getElementById('virtual-hosts').value;
+            const fetchAll = document.getElementById('fetch-all').checked;
+
+            try {
+                const response = await fetch('/save-search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: title,
+                        legacy_query: document.getElementById('legacy-query').value,
+                        new_query: document.getElementById('new-query').value,
+                        virtual_hosts: virtualHosts,
+                        fetch_all: fetchAll,
+                        results: currentResults,
+                        overwrite: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentSearchName = title;
+                    await loadSavedSearches();
+                }
+            } catch (error) {
+                console.error('Auto-save failed:', error);
+            }
         }
 
         async function saveSearch() {
@@ -914,8 +1100,8 @@
             // Store the current search name
             currentSearchName = search.name;
 
-            // Update search title
-            document.getElementById('search-title').textContent = search.name;
+            // Update title input
+            document.getElementById('search-title-input').value = search.name;
 
             // Load queries
             document.getElementById('legacy-query').value = search.legacy_query;
@@ -1007,10 +1193,11 @@
                 currentResults = data;
                 displayResults(data);
                 
-                // Clear the search name for new comparisons
-                currentSearchName = null;
-                document.getElementById('search-name').value = '';
-                document.getElementById('search-title').textContent = 'New Search';
+                // Auto-save if title is filled
+                const title = document.getElementById('search-title-input').value.trim();
+                if (title) {
+                    await autoSaveSearch(title);
+                }
                 
                 // Hide fetch_all warning for new searches
                 document.getElementById('fetch-all-warning').style.display = 'none';

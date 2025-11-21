@@ -97,12 +97,16 @@ def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE",
 
         # Paginate if fetch_all is enabled
         if fetch_all:
-            next_cursor = result.get("links", {}).get("next")
-            while next_cursor:
+            cursor = result.get("links", {}).get("next")
+            while cursor:
                 try:
+                    # Use cursor parameter for pagination
+                    next_params = params.copy()
+                    next_params["cursor"] = cursor
                     response = requests.get(
-                        next_cursor,
+                        LEGACY_URL,
                         auth=auth,
+                        params=next_params,
                         timeout=30
                     )
                     response.raise_for_status()
@@ -114,7 +118,8 @@ def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE",
                         if "ip" in hit:
                             ips.add(hit["ip"])
                     
-                    next_cursor = result.get("links", {}).get("next")
+                    # Get next cursor for next iteration
+                    cursor = result.get("links", {}).get("next")
                 except Exception as e:
                     error = f"Pagination error: {str(e)}"
                     break

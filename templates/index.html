@@ -575,8 +575,8 @@
                             </span>
                         </label>
                         <select id="virtual-hosts">
-                            <option value="EXCLUDE">EXCLUDE (Default)</option>
-                            <option value="INCLUDE">INCLUDE</option>
+                            <option value="EXCLUDE">EXCLUDE</option>
+                            <option value="INCLUDE" selected>INCLUDE (Default)</option>
                             <option value="ONLY">ONLY</option>
                         </select>
                     </div>
@@ -827,9 +827,9 @@
             document.getElementById('legacy-query').value = search.legacy_query;
             document.getElementById('new-query').value = search.new_query;
 
-            // Load virtual_hosts setting (default to EXCLUDE if not present)
+            // Load virtual_hosts setting (default to INCLUDE if not present)
             const virtualHostsSelect = document.getElementById('virtual-hosts');
-            virtualHostsSelect.value = search.virtual_hosts || 'EXCLUDE';
+            virtualHostsSelect.value = search.virtual_hosts || 'INCLUDE';
 
             // Display saved results
             currentResults = search.results;

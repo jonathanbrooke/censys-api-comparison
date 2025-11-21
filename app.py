@@ -33,7 +33,7 @@ def init_db():
             name TEXT NOT NULL,
             legacy_query TEXT NOT NULL,
             new_query TEXT NOT NULL,
-            virtual_hosts TEXT DEFAULT 'EXCLUDE',
+            virtual_hosts TEXT DEFAULT 'INCLUDE',
             results TEXT NOT NULL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -44,7 +44,7 @@ def init_db():
     if 'virtual_hosts' not in columns:
         cursor.execute(
             'ALTER TABLE saved_searches ADD COLUMN '
-            'virtual_hosts TEXT DEFAULT "EXCLUDE"'
+            'virtual_hosts TEXT DEFAULT "INCLUDE"'
         )
     conn.commit()
     conn.close()
@@ -64,7 +64,7 @@ def strip_quotes(text):
     return text
 
 
-def get_legacy_results(query, limit=100, virtual_hosts="EXCLUDE"):
+def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE"):
     """Fetch results from Legacy Censys API."""
     ips = set()
     total_hits = 0
@@ -231,7 +231,7 @@ def save_search():
     name = data.get('name', '').strip()
     legacy_query = data.get('legacy_query', '')
     new_query = data.get('new_query', '')
-    virtual_hosts = data.get('virtual_hosts', 'EXCLUDE')
+    virtual_hosts = data.get('virtual_hosts', 'INCLUDE')
     results = data.get('results', {})
     overwrite = data.get('overwrite', False)
 

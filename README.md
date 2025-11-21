@@ -9,7 +9,7 @@ This tool queries the following Censys API endpoints:
 - **Legacy API (v2)**: `GET https://search.censys.io/api/v2/hosts/search`
   - Authentication: HTTP Basic Auth (API ID + Secret)
   - Returns host search results with IP addresses
-  - Supports virtual hosts filtering
+  - Supports virtual hosts filtering (default: INCLUDE)
 
 - **New Platform API (v3)**: `POST https://api.platform.censys.io/v3/global/search/query`
   - Authentication: Bearer token + `X-Organization-ID` header

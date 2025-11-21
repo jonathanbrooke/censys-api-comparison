@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Censys API Comparison Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-search {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .sidebar-search:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .saved-search-item {
+            background: #f8f9fa;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .saved-search-item:hover {
+            border-color: #667eea;
+            background: #e8ecff;
+        }
+
+        .saved-search-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .saved-search-date {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .saved-search-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .saved-search-actions button {
+            padding: 4px 8px;
+            font-size: 11px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .saved-search-actions button:hover {
+            background: #c82333;
+        }
+
+        .no-saved-searches {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .query-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .query-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .query-box label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .query-box textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .query-box textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .status-banner {
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .result-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .comparison-card {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            margin-top: 20px;
+        }
+
+        .comparison-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ip-list {
+            background: white;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .ip-list-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .ip-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+            .query-section,
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .save-panel {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            margin-top: 20px;
+        }
+
+        .save-panel h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .save-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .save-input input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .save-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .save-btn {
+            background: #28a745;
+            padding: 12px 30px;
+        }
+
+        .save-btn:hover {
+            background: #218838;
+        }
+
+        .sort-container {
+            margin-bottom: 15px;
+        }
+
+        .sort-select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar for saved searches -->
+    <div class="sidebar">
+        <h2>💾 Saved Searches</h2>
+        <div class="sort-container">
+            <select class="sort-select" id="sort-select" onchange="sortAndDisplaySearches()">
+                <option value="date-desc">Date (Newest First)</option>
+                <option value="date-asc">Date (Oldest First)</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+            </select>
+        </div>
+        <input type="text" class="sidebar-search" id="sidebar-search" placeholder="Search saved..." onkeyup="filterSavedSearches()">
+        <div id="saved-searches-list"></div>
+    </div>
+
+    <div class="main-container">
+        <div class="container">
+            <div class="header">
+                <h1>🔍 Censys API Comparison Tool</h1>
+                <p>Compare query results between Legacy API (v2) and New Platform API (v3)</p>
+            </div>
+
+            <div class="content">
+                <div class="query-section">
+                    <div class="query-box">
+                        <label for="legacy-query">Legacy API Query (v2)</label>
+                        <textarea id="legacy-query" placeholder='services.port: 80 AND location.country: "US"'></textarea>
+                    </div>
+                    <div class="query-box">
+                        <label for="new-query">New API Query (v3)</label>
+                        <textarea id="new-query" placeholder='services.port: 80 AND location.country: "US"'></textarea>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button id="compare-btn" onclick="compareQueries()">Compare Queries</button>
+                </div>
+
+            <div class="loading" id="loading">
+                <p>⏳ Fetching results from both APIs...</p>
+            </div>
+
+            <div class="results" id="results">
+                <div class="status-banner" id="status-banner"></div>
+
+                <div class="results-grid">
+                    <div class="result-card">
+                        <h3>📊 Legacy API (v2)</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Results:</span>
+                            <span class="stat-value" id="legacy-total">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">IPs Fetched:</span>
+                            <span class="stat-value" id="legacy-fetched">-</span>
+                        </div>
+                        <div id="legacy-error"></div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>📊 New API (v3)</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Results:</span>
+                            <span class="stat-value" id="new-total">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">IPs Fetched:</span>
+                            <span class="stat-value" id="new-fetched">-</span>
+                        </div>
+                        <div id="new-error"></div>
+                    </div>
+                </div>
+
+                <div class="comparison-card">
+                    <h3>🔄 Comparison Results</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Common IPs:</span>
+                        <span class="stat-value" id="common-count">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Only in Legacy API:</span>
+                        <span class="stat-value" id="only-legacy-count">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Only in New API:</span>
+                        <span class="stat-value" id="only-new-count">-</span>
+                    </div>
+                </div>
+
+                <div class="results-grid" style="margin-top: 20px;">
+                    <div class="comparison-card">
+                        <h3>ℹ️ Only in Legacy API</h3>
+                        <div id="only-legacy-detailed-list" class="ip-list"></div>
+                    </div>
+
+                    <div class="comparison-card">
+                        <h3>ℹ️ Only in New API</h3>
+                        <div id="only-new-detailed-list" class="ip-list"></div>
+                    </div>
+                </div>
+
+                <div class="results-grid" style="margin-top: 20px;">
+                    <div class="comparison-card">
+                        <h3>📋 All Legacy API IPs</h3>
+                        <div id="legacy-ips-list" class="ip-list"></div>
+                    </div>
+
+                    <div class="comparison-card">
+                        <h3>📋 All New API IPs</h3>
+                        <div id="new-ips-list" class="ip-list"></div>
+                    </div>
+                </div>
+
+                <!-- Save Panel -->
+                <div class="save-panel" id="save-panel" style="display: none;">
+                    <h3>💾 Save This Search</h3>
+                    <div class="save-input">
+                        <input type="text" id="search-name" placeholder="Enter a name for this search...">
+                        <button class="save-btn" onclick="saveSearch()">Save Search</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        let currentResults = null;
+        let allSearches = [];
+        let currentSort = 'date-desc';
+
+        // Load saved searches on page load
+        window.onload = function() {
+            loadSavedSearches();
+        };
+
+        function sortSearches(searches, sortType) {
+            const sorted = [...searches];
+            
+            switch(sortType) {
+                case 'date-desc':
+                    return sorted.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                case 'date-asc':
+                    return sorted.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                case 'name-asc':
+                    return sorted.sort((a, b) => a.name.localeCompare(b.name));
+                case 'name-desc':
+                    return sorted.sort((a, b) => b.name.localeCompare(a.name));
+                default:
+                    return sorted;
+            }
+        }
+
+        function sortAndDisplaySearches() {
+            currentSort = document.getElementById('sort-select').value;
+            displaySearchList(allSearches);
+        }
+
+        function displaySearchList(searches) {
+            const listDiv = document.getElementById('saved-searches-list');
+            
+            if (searches.length === 0) {
+                listDiv.innerHTML = '<div class="no-saved-searches">No saved searches yet</div>';
+                return;
+            }
+
+            const sorted = sortSearches(searches, currentSort);
+            listDiv.innerHTML = sorted.map((search) => `
+                <div class="saved-search-item" onclick="loadSearch(${search.id})">
+                    <div class="saved-search-name">${search.name}</div>
+                    <div class="saved-search-date">${new Date(search.timestamp).toLocaleString()}</div>
+                    <div class="saved-search-actions">
+                        <button onclick="event.stopPropagation(); deleteSearch(${search.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadSavedSearches() {
+            try {
+                const response = await fetch('/load-searches');
+                const searches = await response.json();
+                allSearches = searches;
+                displaySearchList(searches);
+            } catch (error) {
+                console.error('Error loading searches:', error);
+            }
+        }
+
+        function filterSavedSearches() {
+            const searchTerm = document.getElementById('sidebar-search').value.toLowerCase();
+            const filtered = allSearches.filter(s => s.name.toLowerCase().includes(searchTerm));
+            displaySearchList(filtered);
+        }
+
+        async function saveSearch() {
+            const name = document.getElementById('search-name').value.trim();
+            if (!name) {
+                alert('Please enter a name for this search');
+                return;
+            }
+
+            if (!currentResults) {
+                alert('No search results to save');
+                return;
+            }
+
+            try {
+                const response = await fetch('/save-search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        legacy_query: document.getElementById('legacy-query').value,
+                        new_query: document.getElementById('new-query').value,
+                        results: currentResults
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to save search');
+                }
+
+                document.getElementById('search-name').value = '';
+                await loadSavedSearches();
+                alert('Search saved successfully!');
+            } catch (error) {
+                alert('Error saving search: ' + error.message);
+            }
+        }
+
+        function loadSearch(searchId) {
+            const search = allSearches.find(s => s.id === searchId);
+            
+            if (!search) return;
+
+            // Load queries
+            document.getElementById('legacy-query').value = search.legacy_query;
+            document.getElementById('new-query').value = search.new_query;
+
+            // Display saved results
+            currentResults = search.results;
+            displayResults(search.results);
+        }
+
+        async function deleteSearch(searchId) {
+            if (!confirm('Are you sure you want to delete this search?')) return;
+            
+            try {
+                const response = await fetch(`/delete-search/${searchId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to delete search');
+                }
+
+                await loadSavedSearches();
+            } catch (error) {
+                alert('Error deleting search: ' + error.message);
+            }
+        }
+
+        async function compareQueries() {
+            const legacyQuery = document.getElementById('legacy-query').value.trim();
+            const newQuery = document.getElementById('new-query').value.trim();
+
+            if (!legacyQuery || !newQuery) {
+                alert('Please enter both queries');
+                return;
+            }
+
+            // Show loading, hide results
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('compare-btn').disabled = true;
+
+            try {
+                const response = await fetch('/compare', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        legacy_query: legacyQuery,
+                        new_query: newQuery
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+
+                currentResults = data;
+                displayResults(data);
+                
+                // Show save panel after successful comparison
+                document.getElementById('save-panel').style.display = 'block';
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('compare-btn').disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            // Show results section
+            document.getElementById('results').classList.add('active');
+
+            // Update status banner
+            const statusBanner = document.getElementById('status-banner');
+            statusBanner.className = 'status-banner status-' + data.status;
+            
+            if (data.status === 'success') {
+                statusBanner.textContent = '✅ Success! All Legacy IPs found in New API';
+            } else if (data.status === 'warning') {
+                statusBanner.textContent = '⚠️ Warning! Some IPs missing in New API';
+            } else {
+                statusBanner.textContent = '❌ Error occurred during comparison';
+            }
+
+            // Update Legacy API stats
+            document.getElementById('legacy-total').textContent = data.legacy.total;
+            document.getElementById('legacy-fetched').textContent = data.legacy.fetched;
+            
+            const legacyErrorDiv = document.getElementById('legacy-error');
+            if (data.legacy.error) {
+                legacyErrorDiv.innerHTML = `<div class="error-message">Error: ${data.legacy.error}</div>`;
+            } else {
+                legacyErrorDiv.innerHTML = '';
+            }
+
+            // Update New API stats
+            document.getElementById('new-total').textContent = data.new.total;
+            document.getElementById('new-fetched').textContent = data.new.fetched;
+            
+            const newErrorDiv = document.getElementById('new-error');
+            if (data.new.error) {
+                newErrorDiv.innerHTML = `<div class="error-message">Error: ${data.new.error}</div>`;
+            } else {
+                newErrorDiv.innerHTML = '';
+            }
+
+            // Update comparison stats
+            document.getElementById('common-count').textContent = data.comparison.common;
+            document.getElementById('only-legacy-count').textContent = data.comparison.missing_in_new.length;
+            document.getElementById('only-new-count').textContent = data.comparison.only_in_new.length;
+
+            // Display only-in-legacy IPs in dedicated section (left side)
+            const onlyLegacyDetailedList = document.getElementById('only-legacy-detailed-list');
+            if (data.comparison.missing_in_new.length > 0) {
+                const ipListHTML = data.comparison.missing_in_new.map(ip => 
+                    `<div class="ip-list-item">${ip}</div>`
+                ).join('');
+                onlyLegacyDetailedList.innerHTML = ipListHTML;
+            } else {
+                onlyLegacyDetailedList.innerHTML = '<div class="empty-state">No unique IPs in Legacy API</div>';
+            }
+
+            // Display only-in-new IPs in dedicated section (right side)
+            const onlyNewDetailedList = document.getElementById('only-new-detailed-list');
+            if (data.comparison.only_in_new.length > 0) {
+                const ipListHTML = data.comparison.only_in_new.map(ip => 
+                    `<div class="ip-list-item">${ip}</div>`
+                ).join('');
+                onlyNewDetailedList.innerHTML = ipListHTML;
+            } else {
+                onlyNewDetailedList.innerHTML = '<div class="empty-state">No unique IPs in New API</div>';
+            }
+
+            // Display all Legacy API IPs
+            const legacyIpsList = document.getElementById('legacy-ips-list');
+            if (data.legacy.ips && data.legacy.ips.length > 0) {
+                const ipListHTML = data.legacy.ips.map(ip => 
+                    `<div class="ip-list-item">${ip}</div>`
+                ).join('');
+                legacyIpsList.innerHTML = ipListHTML;
+            } else {
+                legacyIpsList.innerHTML = '<div class="empty-state">No IPs returned</div>';
+            }
+
+            // Display all New API IPs
+            const newIpsList = document.getElementById('new-ips-list');
+            if (data.new.ips && data.new.ips.length > 0) {
+                const ipListHTML = data.new.ips.map(ip => 
+                    `<div class="ip-list-item">${ip}</div>`
+                ).join('');
+                newIpsList.innerHTML = ipListHTML;
+            } else {
+                newIpsList.innerHTML = '<div class="empty-state">No IPs returned</div>';
+            }
+        }
+
+        // Allow Enter key in textareas without submitting
+        document.getElementById('legacy-query').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                compareQueries();
+            }
+        });
+
+        document.getElementById('new-query').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                compareQueries();
+            }
+        });
+    </script>
+</body>
+</html>

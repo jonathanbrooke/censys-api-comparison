@@ -434,6 +434,40 @@
             border-color: #667eea;
         }
 
+        .export-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #764ba2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 100;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(118, 75, 162, 0.4);
+            background: #8e5cbd;
+        }
+
+        .export-btn:active {
+            transform: translateY(0);
+        }
+
+        .export-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .options-section {
             margin-top: 20px;
             background: #f8f9fa;
@@ -548,6 +582,7 @@
 
     <div class="main-container">
         <div class="container">
+            <button id="export-btn" class="export-btn" onclick="exportResults()" disabled>📥 Export</button>
             <div class="header">
                 <h1>🔍 Censys API Comparison Tool</h1>
                 <p>Compare query results between Legacy API (v2) and New Platform API (v3)</p>
@@ -696,6 +731,40 @@
         window.onload = function() {
             loadSavedSearches();
         };
+
+        function exportResults() {
+            if (!currentResults) {
+                alert('No results to export');
+                return;
+            }
+
+            const exportData = {
+                search_name: currentSearchName || 'new_search',
+                timestamp: new Date().toISOString(),
+                legacy_query: document.getElementById('legacy-query').value,
+                new_query: document.getElementById('new-query').value,
+                virtual_hosts: document.getElementById('virtual-hosts').value,
+                results: currentResults
+            };
+
+            // Create blob and download
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Generate filename
+            const filename = (currentSearchName || 'new_search')
+                .replace(/[^a-z0-9]/gi, '_')
+                .toLowerCase();
+            const timestamp = new Date().toISOString().split('T')[0];
+            a.download = `censys_${filename}_${timestamp}.json`;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         function sortSearches(searches, sortType) {
             const sorted = [...searches];
@@ -939,6 +1008,9 @@
         function displayResults(data) {
             // Show results section
             document.getElementById('results').classList.add('active');
+
+            // Enable export button
+            document.getElementById('export-btn').disabled = false;
 
             // Update status banner
             const statusBanner = document.getElementById('status-banner');

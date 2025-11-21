@@ -113,11 +113,11 @@ def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE",
                     data = response.json()
                     result = data.get("result", {})
                     hits = result.get("hits", [])
-                    
+
                     for hit in hits:
                         if "ip" in hit:
                             ips.add(hit["ip"])
-                    
+
                     # Get next cursor for next iteration
                     cursor = result.get("links", {}).get("next")
                 except Exception as e:

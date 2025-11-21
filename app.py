@@ -34,17 +34,29 @@ def init_db():
             legacy_query TEXT NOT NULL,
             new_query TEXT NOT NULL,
             virtual_hosts TEXT DEFAULT 'INCLUDE',
+            fetch_all INTEGER DEFAULT 0,
+            fetch_all_timestamp TEXT,
             results TEXT NOT NULL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # Add virtual_hosts column to existing tables if it doesn't exist
+    # Add columns to existing tables if they don't exist
     cursor.execute("PRAGMA table_info(saved_searches)")
     columns = [column[1] for column in cursor.fetchall()]
     if 'virtual_hosts' not in columns:
         cursor.execute(
             'ALTER TABLE saved_searches ADD COLUMN '
             'virtual_hosts TEXT DEFAULT "INCLUDE"'
+        )
+    if 'fetch_all' not in columns:
+        cursor.execute(
+            'ALTER TABLE saved_searches ADD COLUMN '
+            'fetch_all INTEGER DEFAULT 0'
+        )
+    if 'fetch_all_timestamp' not in columns:
+        cursor.execute(
+            'ALTER TABLE saved_searches ADD COLUMN '
+            'fetch_all_timestamp TEXT'
         )
     conn.commit()
     conn.close()
@@ -281,11 +293,17 @@ def save_search():
     legacy_query = data.get('legacy_query', '')
     new_query = data.get('new_query', '')
     virtual_hosts = data.get('virtual_hosts', 'INCLUDE')
+    fetch_all = data.get('fetch_all', False)
     results = data.get('results', {})
     overwrite = data.get('overwrite', False)
 
     if not name:
         return jsonify({'error': 'Name is required'}), 400
+
+    # Get current timestamp if fetch_all was used
+    fetch_all_timestamp = None
+    if fetch_all:
+        fetch_all_timestamp = datetime.now().isoformat()
 
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -305,19 +323,21 @@ def save_search():
         # Update existing entry
         cursor.execute(
             'UPDATE saved_searches SET legacy_query = ?, new_query = ?, '
-            'virtual_hosts = ?, results = ?, timestamp = CURRENT_TIMESTAMP '
+            'virtual_hosts = ?, fetch_all = ?, fetch_all_timestamp = ?, '
+            'results = ?, timestamp = CURRENT_TIMESTAMP '
             'WHERE name = ?',
-            (legacy_query, new_query, virtual_hosts,
-             json.dumps(results), name)
+            (legacy_query, new_query, virtual_hosts, int(fetch_all),
+             fetch_all_timestamp, json.dumps(results), name)
         )
     else:
         # Insert new entry
         cursor.execute(
             'INSERT INTO saved_searches '
-            '(name, legacy_query, new_query, virtual_hosts, results) '
-            'VALUES (?, ?, ?, ?, ?)',
-            (name, legacy_query, new_query, virtual_hosts,
-             json.dumps(results))
+            '(name, legacy_query, new_query, virtual_hosts, fetch_all, '
+            'fetch_all_timestamp, results) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (name, legacy_query, new_query, virtual_hosts, int(fetch_all),
+             fetch_all_timestamp, json.dumps(results))
         )
 
     conn.commit()
@@ -333,7 +353,8 @@ def load_searches():
     cursor = conn.cursor()
     cursor.execute(
         'SELECT id, name, legacy_query, new_query, virtual_hosts, '
-        'results, timestamp FROM saved_searches ORDER BY timestamp DESC'
+        'fetch_all, fetch_all_timestamp, results, timestamp '
+        'FROM saved_searches ORDER BY timestamp DESC'
     )
     rows = cursor.fetchall()
     conn.close()
@@ -346,8 +367,10 @@ def load_searches():
             'legacy_query': row[2],
             'new_query': row[3],
             'virtual_hosts': row[4],
-            'results': json.loads(row[5]),
-            'timestamp': row[6]
+            'fetch_all': bool(row[5]),
+            'fetch_all_timestamp': row[6],
+            'results': json.loads(row[7]),
+            'timestamp': row[8]
         })
 
     return jsonify(searches)

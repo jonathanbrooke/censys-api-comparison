@@ -626,6 +626,9 @@
                                 </span>
                             </span>
                         </label>
+                        <div id="fetch-all-warning" style="display: none; margin-top: 8px; padding: 8px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; font-size: 13px; color: #856404;">
+                            ⚠️ <strong>Warning:</strong> Already fetched all results on <span id="fetch-all-date"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -838,6 +841,7 @@
             }
 
             const virtualHosts = document.getElementById('virtual-hosts').value;
+            const fetchAll = document.getElementById('fetch-all').checked;
 
             try {
                 const response = await fetch('/save-search', {
@@ -850,6 +854,7 @@
                         legacy_query: document.getElementById('legacy-query').value,
                         new_query: document.getElementById('new-query').value,
                         virtual_hosts: virtualHosts,
+                        fetch_all: fetchAll,
                         results: currentResults
                     })
                 });
@@ -870,6 +875,7 @@
                                 legacy_query: document.getElementById('legacy-query').value,
                                 new_query: document.getElementById('new-query').value,
                                 virtual_hosts: virtualHosts,
+                                fetch_all: fetchAll,
                                 results: currentResults,
                                 overwrite: true
                             })
@@ -921,6 +927,17 @@
 
             // Reset fetch_all checkbox
             document.getElementById('fetch-all').checked = false;
+
+            // Show warning if this search was previously fetched with fetch_all
+            const warningDiv = document.getElementById('fetch-all-warning');
+            const dateSpan = document.getElementById('fetch-all-date');
+            if (search.fetch_all && search.fetch_all_timestamp) {
+                const date = new Date(search.fetch_all_timestamp);
+                dateSpan.textContent = date.toLocaleString();
+                warningDiv.style.display = 'block';
+            } else {
+                warningDiv.style.display = 'none';
+            }
 
             // Display saved results
             currentResults = search.results;
@@ -994,6 +1011,9 @@
                 currentSearchName = null;
                 document.getElementById('search-name').value = '';
                 document.getElementById('search-title').textContent = 'New Search';
+                
+                // Hide fetch_all warning for new searches
+                document.getElementById('fetch-all-warning').style.display = 'none';
                 
                 // Show save panel after successful comparison
                 document.getElementById('save-panel').style.display = 'block';

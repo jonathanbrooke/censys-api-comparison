@@ -554,6 +554,7 @@
             </div>
 
             <div class="content">
+                <h2 id="search-title" style="color: #667eea; margin-bottom: 20px; font-size: 24px;">New Search</h2>
                 <div class="query-section">
                     <div class="query-box">
                         <label for="legacy-query">Legacy API Query (v2)</label>
@@ -579,6 +580,17 @@
                             <option value="INCLUDE" selected>INCLUDE (Default)</option>
                             <option value="ONLY">ONLY</option>
                         </select>
+                    </div>
+
+                    <div class="option-group" style="margin-top: 15px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="fetch-all" style="width: auto; cursor: pointer;">
+                            <span>Fetch All Results (All Pages)
+                                <span class="tooltip">?
+                                    <span class="tooltiptext">⚠️ WARNING: This will fetch ALL pages of results from both APIs, which may consume significant API quota and take longer to complete. Default behavior fetches only the first 100 results. Before enabling, check result counts on the official Censys website (search.censys.io) which is free and doesn't count against your quota.</span>
+                                </span>
+                            </span>
+                        </label>
                     </div>
                 </div>
 
@@ -827,6 +839,9 @@
             // Store the current search name
             currentSearchName = search.name;
 
+            // Update search title
+            document.getElementById('search-title').textContent = search.name;
+
             // Load queries
             document.getElementById('legacy-query').value = search.legacy_query;
             document.getElementById('new-query').value = search.new_query;
@@ -834,6 +849,9 @@
             // Load virtual_hosts setting (default to INCLUDE if not present)
             const virtualHostsSelect = document.getElementById('virtual-hosts');
             virtualHostsSelect.value = search.virtual_hosts || 'INCLUDE';
+
+            // Reset fetch_all checkbox
+            document.getElementById('fetch-all').checked = false;
 
             // Display saved results
             currentResults = search.results;
@@ -868,6 +886,7 @@
             const legacyQuery = document.getElementById('legacy-query').value.trim();
             const newQuery = document.getElementById('new-query').value.trim();
             const virtualHosts = document.getElementById('virtual-hosts').value;
+            const fetchAll = document.getElementById('fetch-all').checked;
 
             if (!legacyQuery || !newQuery) {
                 alert('Please enter both queries');
@@ -888,7 +907,8 @@
                     body: JSON.stringify({
                         legacy_query: legacyQuery,
                         new_query: newQuery,
-                        virtual_hosts: virtualHosts
+                        virtual_hosts: virtualHosts,
+                        fetch_all: fetchAll
                     })
                 });
 
@@ -904,6 +924,7 @@
                 // Clear the search name for new comparisons
                 currentSearchName = null;
                 document.getElementById('search-name').value = '';
+                document.getElementById('search-title').textContent = 'New Search';
                 
                 // Show save panel after successful comparison
                 document.getElementById('save-panel').style.display = 'block';

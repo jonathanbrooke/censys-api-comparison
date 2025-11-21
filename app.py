@@ -54,7 +54,8 @@ def init_db():
 init_db()
 
 
-def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE"):
+def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE",
+                       fetch_all=False):
     """Fetch results from Legacy Censys API."""
     ips = set()
     total_hits = 0
@@ -69,6 +70,7 @@ def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE"):
     }
 
     try:
+        # Fetch first page
         response = requests.get(LEGACY_URL, auth=auth, params=params)
         response.raise_for_status()
         data = response.json()
@@ -81,6 +83,30 @@ def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE"):
             if "ip" in hit:
                 ips.add(hit["ip"])
 
+        # Paginate if fetch_all is enabled
+        if fetch_all:
+            next_cursor = result.get("links", {}).get("next")
+            while next_cursor:
+                try:
+                    response = requests.get(
+                        next_cursor,
+                        auth=auth,
+                        timeout=30
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    result = data.get("result", {})
+                    hits = result.get("hits", [])
+                    
+                    for hit in hits:
+                        if "ip" in hit:
+                            ips.add(hit["ip"])
+                    
+                    next_cursor = result.get("links", {}).get("next")
+                except Exception as e:
+                    error = f"Pagination error: {str(e)}"
+                    break
+
     except requests.exceptions.RequestException as e:
         error = str(e)
         if hasattr(e, 'response') and e.response is not None:
@@ -89,7 +115,7 @@ def get_legacy_results(query, limit=100, virtual_hosts="INCLUDE"):
     return ips, total_hits, error
 
 
-def get_new_results(query, limit=100):
+def get_new_results(query, limit=100, fetch_all=False):
     """Fetch results from New Censys Platform API."""
     ips = set()
     total_hits = 0
@@ -109,18 +135,9 @@ def get_new_results(query, limit=100):
         "page_size": limit
     }
 
-    try:
-        response = requests.post(NEW_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        data = response.json()
-
-        result = data.get("result", {})
-        # New API v3 doesn't return 'total' in the same way
-        hits = result.get("hits", [])
-        total_hits = result.get("total_results",
-                                result.get("total_count",
-                                           result.get("total", len(hits))))
-
+    def extract_ips_from_hits(hits):
+        """Helper to extract IPs from hit results."""
+        extracted = set()
         for hit in hits:
             # Try webproperty_v1 structure
             if 'webproperty_v1' in hit:
@@ -128,23 +145,62 @@ def get_new_results(query, limit=100):
                 if 'hostname' in resource:
                     hostname = resource['hostname']
                     if hostname.replace('.', '').isdigit():
-                        ips.add(hostname)
+                        extracted.add(hostname)
                 endpoints = resource.get('endpoints', [])
                 for endpoint in endpoints:
                     if 'ip' in endpoint:
-                        ips.add(endpoint['ip'])
+                        extracted.add(endpoint['ip'])
 
             # Try host_v1 structure
             elif 'host_v1' in hit:
                 resource = hit['host_v1'].get('resource', {})
                 if 'ip' in resource:
-                    ips.add(resource['ip'])
+                    extracted.add(resource['ip'])
 
             # Fallback: direct keys
             elif "ip" in hit:
-                ips.add(hit["ip"])
+                extracted.add(hit["ip"])
             elif "ip_address" in hit:
-                ips.add(hit["ip_address"])
+                extracted.add(hit["ip_address"])
+        return extracted
+
+    try:
+        # Fetch first page
+        response = requests.post(NEW_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+        result = data.get("result", {})
+        hits = result.get("hits", [])
+        total_hits = result.get("total_results",
+                                result.get("total_count",
+                                           result.get("total", len(hits))))
+
+        ips.update(extract_ips_from_hits(hits))
+
+        # Paginate if fetch_all is enabled
+        if fetch_all:
+            page_token = result.get("links", {}).get("next")
+            while page_token:
+                try:
+                    payload["cursor"] = page_token
+                    response = requests.post(
+                        NEW_URL,
+                        headers=headers,
+                        json=payload,
+                        timeout=30
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    result = data.get("result", {})
+                    hits = result.get("hits", [])
+
+                    ips.update(extract_ips_from_hits(hits))
+
+                    page_token = result.get("links", {}).get("next")
+                except Exception as e:
+                    error = f"Pagination error: {str(e)}"
+                    break
 
     except requests.exceptions.RequestException as e:
         error = str(e)
@@ -167,6 +223,7 @@ def compare():
     legacy_query = data.get('legacy_query', '').strip()
     new_query = data.get('new_query', '').strip()
     virtual_hosts = data.get('virtual_hosts', 'EXCLUDE')
+    fetch_all = data.get('fetch_all', False)
 
     if not legacy_query or not new_query:
         return jsonify({
@@ -175,9 +232,11 @@ def compare():
 
     # Fetch results from both APIs
     legacy_ips, legacy_total, legacy_error = get_legacy_results(
-        legacy_query, virtual_hosts=virtual_hosts
+        legacy_query, virtual_hosts=virtual_hosts, fetch_all=fetch_all
     )
-    new_ips, new_total, new_error = get_new_results(new_query)
+    new_ips, new_total, new_error = get_new_results(
+        new_query, fetch_all=fetch_all
+    )
 
     # Calculate differences
     missing_in_new = legacy_ips - new_ips
